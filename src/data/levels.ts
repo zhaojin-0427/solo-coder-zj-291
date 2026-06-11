@@ -1,4 +1,4 @@
-import { Level } from '@/types/game';
+import { Level, PracticePattern } from '@/types/game';
 
 const generateCirclePoints = (cx: number, cy: number, radius: number, segments: number): { x: number; y: number }[] => {
   const points: { x: number; y: number }[] = [];
@@ -165,6 +165,107 @@ export const levels: Level[] = [
         description: '底部叶子',
       },
     ],
+  },
+];
+
+const generateTextPoints = (cx: number, cy: number, size: number): { x: number; y: number }[] => {
+  const points: { x: number; y: number }[] = [];
+  const text = 'LOVE';
+  const charWidth = size * 0.8;
+  const startX = cx - (text.length * charWidth) / 2;
+
+  for (let c = 0; c < text.length; c++) {
+    const charX = startX + c * charWidth;
+    const char = text[c];
+
+    if (char === 'L') {
+      for (let i = 0; i <= 20; i++) {
+        points.push({ x: charX, y: cy - size * 0.4 + (i / 20) * size * 0.8 });
+      }
+      for (let i = 0; i <= 15; i++) {
+        points.push({ x: charX + (i / 15) * charWidth * 0.7, y: cy + size * 0.4 });
+      }
+    } else if (char === 'O') {
+      for (let i = 0; i <= 40; i++) {
+        const angle = (i / 40) * Math.PI * 2 - Math.PI / 2;
+        points.push({
+          x: charX + charWidth * 0.35 + Math.cos(angle) * charWidth * 0.3,
+          y: cy + Math.sin(angle) * size * 0.35,
+        });
+      }
+    } else if (char === 'V') {
+      for (let i = 0; i <= 15; i++) {
+        const t = i / 15;
+        points.push({
+          x: charX + t * charWidth * 0.4,
+          y: cy - size * 0.4 + t * size * 0.8,
+        });
+      }
+      for (let i = 0; i <= 15; i++) {
+        const t = i / 15;
+        points.push({
+          x: charX + charWidth * 0.4 + t * charWidth * 0.4,
+          y: cy + size * 0.4 - t * size * 0.8,
+        });
+      }
+    } else if (char === 'E') {
+      for (let i = 0; i <= 20; i++) {
+        points.push({ x: charX, y: cy - size * 0.4 + (i / 20) * size * 0.8 });
+      }
+      for (let i = 0; i <= 12; i++) {
+        points.push({ x: charX + (i / 12) * charWidth * 0.6, y: cy - size * 0.4 });
+      }
+      for (let i = 0; i <= 10; i++) {
+        points.push({ x: charX + (i / 10) * charWidth * 0.45, y: cy });
+      }
+      for (let i = 0; i <= 12; i++) {
+        points.push({ x: charX + (i / 12) * charWidth * 0.6, y: cy + size * 0.4 });
+      }
+    }
+  }
+  return points;
+};
+
+export const practicePatterns: PracticePattern[] = [
+  {
+    type: 'rose',
+    name: '玫瑰花练习',
+    icon: '🌹',
+    description: '练习裱制玫瑰花，注意以打圈方式移动，力度由轻到重再到轻',
+    color: '#FF69B4',
+    nozzleType: 'star',
+    requiredThickness: 6,
+    targetPoints: generateRosePoints(400, 300, 60),
+  },
+  {
+    type: 'leaf',
+    name: '叶子练习',
+    icon: '🍃',
+    description: '练习裱制叶子，注意先轻后重再轻，配合小幅摆动',
+    color: '#90EE90',
+    nozzleType: 'leaf',
+    requiredThickness: 5,
+    targetPoints: generateLeafPoints(400, 300, 60, 0),
+  },
+  {
+    type: 'shell',
+    name: '贝壳边练习',
+    icon: '🐚',
+    description: '练习裱制贝壳边，注意保持匀速和稳定力度，做出均匀的波浪纹',
+    color: '#FFB6C1',
+    nozzleType: 'star',
+    requiredThickness: 8,
+    targetPoints: generateShellBorder(400, 300, 130),
+  },
+  {
+    type: 'text',
+    name: '写字练习',
+    icon: '✍️',
+    description: '练习在蛋糕上写字，注意手要稳，移动速度要均匀',
+    color: '#8B4513',
+    nozzleType: 'writing',
+    requiredThickness: 4,
+    targetPoints: generateTextPoints(400, 300, 50),
   },
 ];
 

@@ -3,8 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Phaser from 'phaser';
 import { levels } from '@/data/levels';
 import { PipingGameScene } from '@/game/PipingGameScene';
-import { GameScore } from '@/types/game';
+import { GameScore, DrawnPoint, TrajectoryReview } from '@/types/game';
 import { useGameStore } from '@/store/gameStore';
+import { analyzeTrajectory } from '@/utils/scoreCalculator';
 import GameHUD from '@/components/GameHUD';
 import ResultModal from '@/components/ResultModal';
 
@@ -27,6 +28,8 @@ const Game: React.FC = () => {
   });
   const [finalScore, setFinalScore] = useState<GameScore | null>(null);
   const [isNewRecord, setIsNewRecord] = useState(false);
+  const [trajectoryReview, setTrajectoryReview] = useState<TrajectoryReview | null>(null);
+  const [drawnPaths, setDrawnPaths] = useState<DrawnPoint[][]>([]);
 
   const level = levels.find((l) => l.id === Number(levelId));
 
@@ -85,8 +88,17 @@ const Game: React.FC = () => {
     };
   }, [level, handleGameEnd]);
 
+  useEffect(() => {
+    if (finalScore && level && drawnPaths.length > 0) {
+      const review = analyzeTrajectory(level.requiredPatterns, drawnPaths);
+      setTrajectoryReview(review);
+    }
+  }, [finalScore, level, drawnPaths]);
+
   const handleFinish = () => {
     if (sceneRef.current) {
+      const paths = (sceneRef.current as any).drawnPaths as DrawnPoint[][] | undefined;
+      if (paths) setDrawnPaths(paths);
       sceneRef.current.forceEndGame();
     }
   };
@@ -94,12 +106,18 @@ const Game: React.FC = () => {
   const handleReplay = () => {
     setFinalScore(null);
     setIsNewRecord(false);
+    setTrajectoryReview(null);
+    setDrawnPaths([]);
     setScoreEstimate({ completion: 0, satisfaction: 0, totalScore: 0, stars: 0 });
     navigate(0);
   };
 
   const handleHome = () => {
     navigate('/');
+  };
+
+  const handlePracticeWeakness = (patternType: string) => {
+    navigate(`/practice/${patternType}`);
   };
 
   if (!level) {
@@ -159,8 +177,10 @@ const Game: React.FC = () => {
           score={finalScore}
           levelName={level.name}
           isNewHighScore={isNewRecord}
+          review={trajectoryReview}
           onReplay={handleReplay}
           onHome={handleHome}
+          onPracticeWeakness={handlePracticeWeakness}
         />
       )}
     </div>

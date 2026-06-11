@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Cake, BookOpen, Trophy, Star } from 'lucide-react';
+import { Cake, BookOpen, Trophy, Star, Target } from 'lucide-react';
 import { levels } from '@/data/levels';
 import { useGameStore } from '@/store/gameStore';
 
@@ -90,13 +90,22 @@ const Home: React.FC = () => {
           })}
         </div>
 
-        <Link
-          to="/learn"
-          className="flex items-center justify-center gap-2 w-full bg-gradient-to-r from-amber-400 to-orange-400 hover:from-amber-500 hover:to-orange-500 text-white font-bold py-4 px-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02]"
-        >
-          <BookOpen className="w-6 h-6" />
-          <span className="text-lg">📚 裱花知识学习</span>
-        </Link>
+        <div className="flex gap-3 mb-2">
+          <Link
+            to="/learn"
+            className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-amber-400 to-orange-400 hover:from-amber-500 hover:to-orange-500 text-white font-bold py-4 px-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02]"
+          >
+            <BookOpen className="w-6 h-6" />
+            <span className="text-lg">📚 知识学习</span>
+          </Link>
+          <Link
+            to="/practice"
+            className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-purple-400 to-pink-400 hover:from-purple-500 hover:to-pink-500 text-white font-bold py-4 px-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02]"
+          >
+            <Target className="w-6 h-6" />
+            <span className="text-lg">🎯 专项练习</span>
+          </Link>
+        </div>
       </div>
 
       <div className="relative z-10 mt-6 text-center text-sm text-orange-600 bg-white/60 rounded-xl px-4 py-2">

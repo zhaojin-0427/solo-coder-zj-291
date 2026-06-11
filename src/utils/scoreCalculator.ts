@@ -1,4 +1,4 @@
-import { Point, Pattern, DrawnPoint, GameScore } from '@/types/game';
+import { Point, Pattern, DrawnPoint, GameScore, TrajectoryReview, ReviewPoint, ReviewPointType, PatternType, PracticeResult } from '@/types/game';
 
 const distance = (p1: Point, p2: Point): number => {
   return Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
@@ -147,5 +147,274 @@ export const calculateScore = (
     satisfaction: Math.max(0, Math.min(100, satisfaction)),
     totalScore: Math.max(0, Math.min(100, totalScore)),
     stars,
+  };
+};
+
+const DEVIATION_THRESHOLD = 25;
+const SPEED_FAST_THRESHOLD = 7;
+const SPEED_SLOW_THRESHOLD = 0.8;
+const PRESSURE_HIGH_THRESHOLD = 0.8;
+const PRESSURE_LOW_THRESHOLD = 0.25;
+
+const reviewPointTypeLabels: Record<ReviewPointType, string> = {
+  deviation: '偏离目标区域',
+  speed_fast: '速度过快断裂',
+  speed_slow: '速度过慢堆积',
+  pressure_high: '力度过高',
+  pressure_low: '力度过低',
+};
+
+export const analyzeTrajectory = (
+  patterns: Pattern[],
+  drawnPaths: DrawnPoint[][]
+): TrajectoryReview => {
+  const reviewPoints: ReviewPoint[] = [];
+  let deviationCount = 0;
+  let speedFastCount = 0;
+  let speedSlowCount = 0;
+  let pressureHighCount = 0;
+  let pressureLowCount = 0;
+
+  const typeErrorCounts: Record<ReviewPointType, number> = {
+    deviation: 0,
+    speed_fast: 0,
+    speed_slow: 0,
+    pressure_high: 0,
+    pressure_low: 0,
+  };
+
+  const patternTypeErrorCounts: Record<PatternType, Record<ReviewPointType, number>> = {
+    rose: { deviation: 0, speed_fast: 0, speed_slow: 0, pressure_high: 0, pressure_low: 0 },
+    leaf: { deviation: 0, speed_fast: 0, speed_slow: 0, pressure_high: 0, pressure_low: 0 },
+    shell: { deviation: 0, speed_fast: 0, speed_slow: 0, pressure_high: 0, pressure_low: 0 },
+    text: { deviation: 0, speed_fast: 0, speed_slow: 0, pressure_high: 0, pressure_low: 0 },
+  };
+
+  drawnPaths.forEach((path) => {
+    for (let i = 1; i < path.length; i++) {
+      const prev = path[i - 1];
+      const curr = path[i];
+
+      const nearestPattern = findNearestPattern(curr.x, curr.y, patterns);
+      if (!nearestPattern) continue;
+
+      const distToPattern = pointToPathDistance(curr, nearestPattern.points);
+      const tolerance = DEVIATION_THRESHOLD + nearestPattern.requiredThickness;
+
+      if (distToPattern > tolerance) {
+        deviationCount++;
+        typeErrorCounts.deviation++;
+        patternTypeErrorCounts[nearestPattern.type].deviation++;
+        reviewPoints.push({
+          x: curr.x,
+          y: curr.y,
+          type: 'deviation',
+          severity: Math.min(1, (distToPattern - tolerance) / tolerance),
+          timestamp: curr.timestamp,
+        });
+      }
+
+      const moveDist = distance(prev, curr);
+      const timeDiff = curr.timestamp - prev.timestamp;
+      if (timeDiff > 0) {
+        const speed = moveDist / (timeDiff / 16.67);
+        if (speed > SPEED_FAST_THRESHOLD) {
+          speedFastCount++;
+          typeErrorCounts.speed_fast++;
+          patternTypeErrorCounts[nearestPattern.type].speed_fast++;
+          reviewPoints.push({
+            x: curr.x,
+            y: curr.y,
+            type: 'speed_fast',
+            severity: Math.min(1, (speed - SPEED_FAST_THRESHOLD) / SPEED_FAST_THRESHOLD),
+            timestamp: curr.timestamp,
+          });
+        } else if (speed < SPEED_SLOW_THRESHOLD && moveDist > 0.5) {
+          speedSlowCount++;
+          typeErrorCounts.speed_slow++;
+          patternTypeErrorCounts[nearestPattern.type].speed_slow++;
+          reviewPoints.push({
+            x: curr.x,
+            y: curr.y,
+            type: 'speed_slow',
+            severity: Math.min(1, (SPEED_SLOW_THRESHOLD - speed) / SPEED_SLOW_THRESHOLD),
+            timestamp: curr.timestamp,
+          });
+        }
+      }
+
+      const thickness = curr.thickness;
+      const targetThickness = nearestPattern.requiredThickness;
+      const pressureRatio = thickness / (3 + PRESSURE_HIGH_THRESHOLD * 8);
+
+      if (thickness > targetThickness * 1.6) {
+        pressureHighCount++;
+        typeErrorCounts.pressure_high++;
+        patternTypeErrorCounts[nearestPattern.type].pressure_high++;
+        reviewPoints.push({
+          x: curr.x,
+          y: curr.y,
+          type: 'pressure_high',
+          severity: Math.min(1, (thickness - targetThickness * 1.6) / targetThickness),
+          timestamp: curr.timestamp,
+        });
+      } else if (thickness < targetThickness * 0.4) {
+        pressureLowCount++;
+        typeErrorCounts.pressure_low++;
+        patternTypeErrorCounts[nearestPattern.type].pressure_low++;
+        reviewPoints.push({
+          x: curr.x,
+          y: curr.y,
+          type: 'pressure_low',
+          severity: Math.min(1, (targetThickness * 0.4 - thickness) / targetThickness),
+          timestamp: curr.timestamp,
+        });
+      }
+    }
+  });
+
+  let weakestType: ReviewPointType = 'deviation';
+  let maxCount = 0;
+  for (const [type, count] of Object.entries(typeErrorCounts)) {
+    if (count > maxCount) {
+      maxCount = count;
+      weakestType = type as ReviewPointType;
+    }
+  }
+
+  let weakestPatternType: PatternType = 'rose';
+  let maxPatternErrors = 0;
+  for (const [pType, errors] of Object.entries(patternTypeErrorCounts)) {
+    const total = Object.values(errors).reduce((a, b) => a + b, 0);
+    if (total > maxPatternErrors) {
+      maxPatternErrors = total;
+      weakestPatternType = pType as PatternType;
+    }
+  }
+
+  return {
+    reviewPoints,
+    deviationCount,
+    speedFastCount,
+    speedSlowCount,
+    pressureHighCount,
+    pressureLowCount,
+    weakestType,
+    weakestPatternType,
+  };
+};
+
+export const calculatePracticeResult = (
+  targetPoints: Point[],
+  drawnPaths: DrawnPoint[][],
+  requiredThickness: number
+): PracticeResult => {
+  if (drawnPaths.length === 0 || drawnPaths.every((p) => p.length < 2)) {
+    return {
+      score: 0,
+      completion: 0,
+      accuracy: 0,
+      speedQuality: 0,
+      pressureQuality: 0,
+      errors: [
+        { type: 'deviation', count: 0, description: reviewPointTypeLabels.deviation },
+        { type: 'speed_fast', count: 0, description: reviewPointTypeLabels.speed_fast },
+        { type: 'speed_slow', count: 0, description: reviewPointTypeLabels.speed_slow },
+        { type: 'pressure_high', count: 0, description: reviewPointTypeLabels.pressure_high },
+        { type: 'pressure_low', count: 0, description: reviewPointTypeLabels.pressure_low },
+      ],
+    };
+  }
+
+  const tolerance = 18 + requiredThickness;
+  let coveredPoints = 0;
+  let totalAccuracy = 0;
+  let accuracySamples = 0;
+
+  targetPoints.forEach((pt) => {
+    let minDist = Infinity;
+    drawnPaths.forEach((path) => {
+      const d = pointToPathDistance(pt, path);
+      if (d < minDist) minDist = d;
+    });
+    if (minDist <= tolerance) {
+      coveredPoints++;
+      totalAccuracy += 1 - Math.min(1, minDist / tolerance);
+      accuracySamples++;
+    }
+  });
+
+  const completion = targetPoints.length > 0 ? Math.round((coveredPoints / targetPoints.length) * 100) : 0;
+  const accuracy = accuracySamples > 0 ? Math.round((totalAccuracy / accuracySamples) * 100) : 0;
+
+  let speedQualitySum = 0;
+  let pressureQualitySum = 0;
+  let sampleCount = 0;
+  let speedFastCount = 0;
+  let speedSlowCount = 0;
+  let pressureHighCount = 0;
+  let pressureLowCount = 0;
+  let deviationCount = 0;
+
+  drawnPaths.forEach((path) => {
+    for (let i = 1; i < path.length; i++) {
+      const prev = path[i - 1];
+      const curr = path[i];
+      const moveDist = distance(prev, curr);
+      const timeDiff = curr.timestamp - prev.timestamp;
+
+      const distToTarget = pointToPathDistance(curr, targetPoints);
+      if (distToTarget > tolerance) {
+        deviationCount++;
+      }
+
+      if (timeDiff > 0) {
+        const speed = moveDist / (timeDiff / 16.67);
+        if (speed > SPEED_FAST_THRESHOLD) {
+          speedFastCount++;
+          speedQualitySum += Math.max(0, 1 - (speed - SPEED_FAST_THRESHOLD) / 5);
+        } else if (speed < SPEED_SLOW_THRESHOLD && moveDist > 0.5) {
+          speedSlowCount++;
+          speedQualitySum += Math.max(0, speed / SPEED_SLOW_THRESHOLD);
+        } else {
+          speedQualitySum += 1;
+        }
+      }
+
+      const thicknessDiff = Math.abs(curr.thickness - requiredThickness);
+      const maxDiff = requiredThickness * 1.2;
+      if (curr.thickness > requiredThickness * 1.6) {
+        pressureHighCount++;
+        pressureQualitySum += Math.max(0, 1 - (thicknessDiff / maxDiff));
+      } else if (curr.thickness < requiredThickness * 0.4) {
+        pressureLowCount++;
+        pressureQualitySum += Math.max(0, 1 - (thicknessDiff / maxDiff));
+      } else {
+        pressureQualitySum += Math.max(0, 1 - thicknessDiff / maxDiff);
+      }
+      sampleCount++;
+    }
+  });
+
+  const speedQuality = sampleCount > 0 ? Math.round((speedQualitySum / sampleCount) * 100) : 0;
+  const pressureQuality = sampleCount > 0 ? Math.round((pressureQualitySum / sampleCount) * 100) : 0;
+
+  const score = Math.min(100, Math.round(
+    completion * 0.3 + accuracy * 0.25 + speedQuality * 0.2 + pressureQuality * 0.25
+  ));
+
+  return {
+    score,
+    completion,
+    accuracy,
+    speedQuality,
+    pressureQuality,
+    errors: [
+      { type: 'deviation', count: deviationCount, description: reviewPointTypeLabels.deviation },
+      { type: 'speed_fast', count: speedFastCount, description: reviewPointTypeLabels.speed_fast },
+      { type: 'speed_slow', count: speedSlowCount, description: reviewPointTypeLabels.speed_slow },
+      { type: 'pressure_high', count: pressureHighCount, description: reviewPointTypeLabels.pressure_high },
+      { type: 'pressure_low', count: pressureLowCount, description: reviewPointTypeLabels.pressure_low },
+    ],
   };
 };

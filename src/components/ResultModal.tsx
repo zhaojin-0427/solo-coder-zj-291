@@ -1,22 +1,29 @@
-import React from 'react';
-import { Star, Trophy, RotateCcw, Home } from 'lucide-react';
-import { GameScore } from '@/types/game';
+import React, { useState } from 'react';
+import { Star, Trophy, RotateCcw, Home, ChevronDown, ChevronUp } from 'lucide-react';
+import { GameScore, TrajectoryReview } from '@/types/game';
+import ReviewPanel from './ReviewPanel';
 
 interface ResultModalProps {
   score: GameScore;
   levelName: string;
   isNewHighScore: boolean;
+  review: TrajectoryReview | null;
   onReplay: () => void;
   onHome: () => void;
+  onPracticeWeakness: (patternType: string) => void;
 }
 
 const ResultModal: React.FC<ResultModalProps> = ({
   score,
   levelName,
   isNewHighScore,
+  review,
   onReplay,
   onHome,
+  onPracticeWeakness,
 }) => {
+  const [showReview, setShowReview] = useState(true);
+
   const getEmoji = () => {
     if (score.stars >= 3) return '🎉';
     if (score.stars >= 2) return '😊';
@@ -32,13 +39,13 @@ const ResultModal: React.FC<ResultModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border-4 border-pink-200 animate-bounce-in">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div className="bg-white rounded-3xl p-6 md:p-8 max-w-lg w-full shadow-2xl border-4 border-pink-200 my-4 max-h-[95vh] overflow-y-auto">
         <div className="text-center">
           <div className="text-7xl mb-4">{getEmoji()}</div>
 
           {isNewHighScore && (
-            <div className="inline-block bg-gradient-to-r from-yellow-400 to-orange-400 text-white font-bold px-4 py-1 rounded-full mb-3 flex items-center gap-1 mx-auto">
+            <div className="inline-flex items-center gap-1 bg-gradient-to-r from-yellow-400 to-orange-400 text-white font-bold px-4 py-1 rounded-full mb-3">
               <Trophy className="w-4 h-4" />
               新纪录！
             </div>
@@ -61,7 +68,7 @@ const ResultModal: React.FC<ResultModalProps> = ({
             ))}
           </div>
 
-          <div className="bg-gradient-to-br from-pink-50 to-orange-50 rounded-2xl p-5 mb-6 border-2 border-pink-100">
+          <div className="bg-gradient-to-br from-pink-50 to-orange-50 rounded-2xl p-5 mb-4 border-2 border-pink-100">
             <div className="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-orange-500 mb-4">
               {score.totalScore}
               <span className="text-2xl text-gray-500">/100</span>
@@ -79,7 +86,28 @@ const ResultModal: React.FC<ResultModalProps> = ({
             </div>
           </div>
 
-          <div className="flex gap-3">
+          {review && (
+            <div className="mb-4">
+              <button
+                onClick={() => setShowReview(!showReview)}
+                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-50 to-purple-50 hover:from-blue-100 hover:to-purple-100 text-blue-700 font-bold py-3 px-4 rounded-xl border-2 border-blue-200 transition-all duration-300"
+              >
+                📊 裱花轨迹复盘
+                {showReview ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+              </button>
+
+              {showReview && (
+                <div className="mt-3">
+                  <ReviewPanel
+                    review={review}
+                    onPracticeWeakness={onPracticeWeakness}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="flex gap-3 mt-4">
             <button
               onClick={onHome}
               className="flex-1 flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 px-4 rounded-xl transition-all"
