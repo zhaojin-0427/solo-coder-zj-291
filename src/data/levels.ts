@@ -53,6 +53,23 @@ const generateShellBorder = (cx: number, cy: number, radius: number): { x: numbe
   return points;
 };
 
+const generateHeartBorder = (cx: number, cy: number, size: number): { x: number; y: number }[] => {
+  const points: { x: number; y: number }[] = [];
+  const totalPoints = 200;
+  for (let i = 0; i <= totalPoints; i++) {
+    const t = (i / totalPoints) * Math.PI * 2;
+    const x = 16 * Math.pow(Math.sin(t), 3);
+    const y = -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t));
+    const wave = Math.sin(t * 12) * 4;
+    const scale = (size / 16) * 0.9;
+    points.push({
+      x: cx + x * scale + Math.cos(t) * wave,
+      y: cy + y * scale + Math.sin(t) * wave,
+    });
+  }
+  return points;
+};
+
 export const levels: Level[] = [
   {
     id: 1,
@@ -121,9 +138,7 @@ export const levels: Level[] = [
     requiredPatterns: [
       {
         type: 'shell',
-        points: [
-          ...generateCirclePoints(400, 290, 140, 72),
-        ],
+        points: generateHeartBorder(400, 290, 150),
         requiredThickness: 7,
         color: '#FF6B9D',
         description: '心形外圈',

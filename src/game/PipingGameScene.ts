@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { Level, DrawnPoint, Pattern, GameScore } from '@/types/game';
-import { calculateScore } from '@/utils/scoreCalculator';
+import { calculateScore, findNearestPattern } from '@/utils/scoreCalculator';
 
 interface GameSceneConfig {
   level: Level;
@@ -181,12 +181,17 @@ export class PipingGameScene extends Phaser.Scene {
     this.nozzleSprite.add([bag, ring, cone, this.nozzleTip]);
   }
 
-  private updateNozzleTip(): void {
+  private updateNozzleTip(cursorX?: number, cursorY?: number): void {
     this.nozzleTip.clear();
     const nozzleSize = 4 + this.pressure * 4;
-    const { nozzleType } = this.configData.level;
+    const { nozzleType, requiredPatterns } = this.configData.level;
 
-    const color = Phaser.Display.Color.HexStringToColor(this.configData.level.requiredPatterns[0]?.color || '#FFB6C1');
+    let tipColor = requiredPatterns[0]?.color || '#FFB6C1';
+    if (cursorX !== undefined && cursorY !== undefined) {
+      const nearest = findNearestPattern(cursorX, cursorY, requiredPatterns);
+      if (nearest) tipColor = nearest.color;
+    }
+    const color = Phaser.Display.Color.HexStringToColor(tipColor);
 
     this.nozzleTip.fillStyle(color.color, 0.9);
 
@@ -245,6 +250,7 @@ export class PipingGameScene extends Phaser.Scene {
 
       this.cursorPos.set(pointer.x, pointer.y);
       this.nozzleSprite.setPosition(pointer.x, pointer.y);
+      this.updateNozzleTip(pointer.x, pointer.y);
 
       if (this.isDrawing) {
         this.drawFrosting(pointer.x, pointer.y);
@@ -272,7 +278,7 @@ export class PipingGameScene extends Phaser.Scene {
 
       this.pressure = Phaser.Math.Clamp(this.pressure + deltaY * 0.001, 0.1, 1.0);
       this.configData.onPressureUpdate(this.pressure);
-      this.updateNozzleTip();
+      this.updateNozzleTip(this.cursorPos.x, this.cursorPos.y);
     });
   }
 
@@ -301,6 +307,15 @@ export class PipingGameScene extends Phaser.Scene {
       timestamp: now,
     };
 
+    const nearestPattern = findNearestPattern(
+      x,
+      y,
+      this.configData.level.requiredPatterns
+    );
+    const currentColor = Phaser.Display.Color.HexStringToColor(
+      nearestPattern?.color || this.configData.level.requiredPatterns[0]?.color || '#FFB6C1'
+    );
+
     if (this.lastDrawPos) {
       const dist = Phaser.Math.Distance.Between(this.lastDrawPos.x, this.lastDrawPos.y, x, y);
       const timeDiff = now - this.lastDrawTime;
@@ -309,9 +324,6 @@ export class PipingGameScene extends Phaser.Scene {
         const speed = dist / (timeDiff / 16.67);
 
         let actualThickness = point.thickness;
-        const color = Phaser.Display.Color.HexStringToColor(
-          this.configData.level.requiredPatterns[0]?.color || '#FFB6C1'
-        );
 
         if (speed > 7) {
           actualThickness = Math.max(1, point.thickness - (speed - 7));
@@ -319,22 +331,23 @@ export class PipingGameScene extends Phaser.Scene {
           actualThickness = Math.min(20, point.thickness + (0.8 - speed) * 3);
         }
 
-        this.frostingGraphics.lineStyle(actualThickness, color.color, 0.9);
+        this.frostingGraphics.lineStyle(actualThickness, currentColor.color, 0.9);
         this.frostingGraphics.beginPath();
         this.frostingGraphics.moveTo(this.lastDrawPos.x, this.lastDrawPos.y);
         this.frostingGraphics.lineTo(x, y);
         this.frostingGraphics.strokePath();
 
         if (this.pressure > 0.3 && this.particles) {
+          (this.particles as any).defaultTint = currentColor.color;
           this.particles.emitParticleAt(x, y, Math.floor(this.pressure * 3));
         }
 
         if (speed > 10) {
-          this.frostingGraphics.lineStyle(actualThickness * 0.5, color.color, 0.5);
+          this.frostingGraphics.lineStyle(actualThickness * 0.5, currentColor.color, 0.5);
         }
 
         if (speed < 0.3) {
-          this.frostingGraphics.fillStyle(color.color, 0.6);
+          this.frostingGraphics.fillStyle(currentColor.color, 0.6);
           this.frostingGraphics.fillCircle(x, y, actualThickness * 0.8);
         }
       }
