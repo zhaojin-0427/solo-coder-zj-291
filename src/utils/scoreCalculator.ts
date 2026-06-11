@@ -1,4 +1,4 @@
-import { Point, Pattern, DrawnPoint, GameScore, TrajectoryReview, ReviewPoint, ReviewPointType, PatternType, PracticeResult } from '@/types/game';
+import { Point, Pattern, DrawnPoint, GameScore, TrajectoryReview, ReviewPoint, ReviewPointType, PatternType, PracticeResult, CustomerOrder, OrderResult, BusinessDayResult } from '@/types/game';
 
 const distance = (p1: Point, p2: Point): number => {
   return Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
@@ -416,5 +416,249 @@ export const calculatePracticeResult = (
       { type: 'pressure_high', count: pressureHighCount, description: reviewPointTypeLabels.pressure_high },
       { type: 'pressure_low', count: pressureLowCount, description: reviewPointTypeLabels.pressure_low },
     ],
+  };
+};
+
+const calculateAccuracy = (
+  patterns: Pattern[],
+  drawnPaths: DrawnPoint[][]
+): number => {
+  if (drawnPaths.length === 0 || drawnPaths.every(p => p.length < 2)) return 0;
+  const tolerance = 18;
+  let totalAccuracy = 0;
+  let accuracySamples = 0;
+
+  patterns.forEach(pattern => {
+    pattern.points.forEach(pt => {
+      let minDist = Infinity;
+      drawnPaths.forEach(path => {
+        const d = pointToPathDistance(pt, path);
+        if (d < minDist) minDist = d;
+      });
+      if (minDist <= tolerance + pattern.requiredThickness) {
+        totalAccuracy += 1 - Math.min(1, minDist / (tolerance + pattern.requiredThickness));
+        accuracySamples++;
+      }
+    });
+  });
+
+  return accuracySamples > 0 ? Math.round((totalAccuracy / accuracySamples) * 100) : 0;
+};
+
+const calculateSpeedQuality = (drawnPaths: DrawnPoint[][]): number => {
+  if (drawnPaths.length === 0) return 0;
+  let speedQualitySum = 0;
+  let sampleCount = 0;
+
+  drawnPaths.forEach(path => {
+    for (let i = 1; i < path.length; i++) {
+      const prev = path[i - 1];
+      const curr = path[i];
+      const moveDist = distance(prev, curr);
+      const timeDiff = curr.timestamp - prev.timestamp;
+      if (timeDiff > 0) {
+        const speed = moveDist / (timeDiff / 16.67);
+        if (speed > SPEED_FAST_THRESHOLD) {
+          speedQualitySum += Math.max(0, 1 - (speed - SPEED_FAST_THRESHOLD) / 5);
+        } else if (speed < SPEED_SLOW_THRESHOLD && moveDist > 0.5) {
+          speedQualitySum += Math.max(0, speed / SPEED_SLOW_THRESHOLD);
+        } else {
+          speedQualitySum += 1;
+        }
+        sampleCount++;
+      }
+    }
+  });
+
+  return sampleCount > 0 ? Math.round((speedQualitySum / sampleCount) * 100) : 0;
+};
+
+const calculatePressureStability = (
+  patterns: Pattern[],
+  drawnPaths: DrawnPoint[][]
+): number => {
+  if (drawnPaths.length === 0) return 0;
+  let pressureQualitySum = 0;
+  let sampleCount = 0;
+
+  drawnPaths.forEach(path => {
+    for (let i = 1; i < path.length; i++) {
+      const curr = path[i];
+      const nearestPattern = findNearestPattern(curr.x, curr.y, patterns);
+      const targetThickness = nearestPattern?.requiredThickness || 6;
+      const thicknessDiff = Math.abs(curr.thickness - targetThickness);
+      const maxDiff = targetThickness * 1.2;
+      pressureQualitySum += Math.max(0, 1 - thicknessDiff / maxDiff);
+      sampleCount++;
+    }
+  });
+
+  return sampleCount > 0 ? Math.round((pressureQualitySum / sampleCount) * 100) : 0;
+};
+
+const calculatePreferenceMatch = (
+  order: CustomerOrder,
+  drawnPaths: DrawnPoint[][]
+): number => {
+  if (drawnPaths.length === 0 || drawnPaths.every(p => p.length < 2)) return 0;
+
+  let colorMatchCount = 0;
+  let speedMatchCount = 0;
+  let totalPoints = 0;
+
+  drawnPaths.forEach(path => {
+    for (let i = 1; i < path.length; i++) {
+      const curr = path[i];
+      const nearest = findNearestPattern(curr.x, curr.y, order.requiredPatterns);
+      if (nearest && nearest.color === order.colorPreference) {
+        colorMatchCount++;
+      }
+
+      const prev = path[i - 1];
+      const moveDist = distance(prev, curr);
+      const timeDiff = curr.timestamp - prev.timestamp;
+      if (timeDiff > 0) {
+        const speed = moveDist / (timeDiff / 16.67);
+        if (order.preferredSpeed === 'slow' && speed < 3) speedMatchCount++;
+        else if (order.preferredSpeed === 'medium' && speed >= 2 && speed <= 5) speedMatchCount++;
+        else if (order.preferredSpeed === 'fast' && speed > 4) speedMatchCount++;
+      }
+      totalPoints++;
+    }
+  });
+
+  if (totalPoints === 0) return 0;
+  const colorScore = colorMatchCount / totalPoints;
+  const speedScore = speedMatchCount / totalPoints;
+  return Math.round((colorScore * 0.6 + speedScore * 0.4) * 100);
+};
+
+export const calculateOrderResult = (
+  order: CustomerOrder,
+  score: GameScore,
+  drawnPaths: DrawnPoint[][],
+  timeUsed: number,
+  patienceRemaining: number
+): OrderResult => {
+  const accuracy = calculateAccuracy(order.requiredPatterns, drawnPaths);
+  const speedQuality = calculateSpeedQuality(drawnPaths);
+  const pressureStability = calculatePressureStability(order.requiredPatterns, drawnPaths);
+  const preferenceMatch = calculatePreferenceMatch(order, drawnPaths);
+
+  const speedBonus = Math.max(0, 1 - timeUsed / order.timeLimit);
+  const patienceFactor = patienceRemaining / order.patience;
+
+  const satisfaction = Math.round(
+    patienceFactor * 30 +
+    speedBonus * 20 +
+    (accuracy / 100) * 20 +
+    (pressureStability / 100) * 15 +
+    (preferenceMatch / 100) * 15
+  );
+
+  const tip = Math.round(
+    order.basePrice *
+    (1 + speedBonus * 0.3) *
+    (0.5 + (accuracy / 100) * 0.3) *
+    (0.7 + (pressureStability / 100) * 0.2) *
+    (0.8 + (preferenceMatch / 100) * 0.2) *
+    (0.4 + patienceFactor * 0.6)
+  );
+
+  const failed = satisfaction < 20 || score.completion < 15;
+
+  const review = drawnPaths.length > 0 && !drawnPaths.every(p => p.length < 2)
+    ? analyzeTrajectory(order.requiredPatterns, drawnPaths)
+    : null;
+
+  return {
+    orderId: order.id,
+    customerName: order.customerName,
+    customerEmoji: order.customerEmoji,
+    score,
+    completion: score.completion,
+    accuracy,
+    speedQuality,
+    pressureStability,
+    preferenceMatch,
+    patienceRemaining: Math.round(patienceRemaining),
+    tip: Math.max(0, tip),
+    satisfaction: Math.max(0, Math.min(100, satisfaction)),
+    timeUsed,
+    timeLimit: order.timeLimit,
+    failed,
+    review,
+  };
+};
+
+export const calculateBusinessDayResult = (
+  orderResults: OrderResult[],
+  businessDayTime: number
+): BusinessDayResult => {
+  const totalIncome = orderResults.reduce((sum, r) => sum + r.tip, 0);
+  const averageSatisfaction = orderResults.length > 0
+    ? Math.round(orderResults.reduce((sum, r) => sum + r.satisfaction, 0) / orderResults.length)
+    : 0;
+  const failedOrders = orderResults.filter(r => r.failed).length;
+
+  const bestOrder = orderResults.length > 0
+    ? orderResults.reduce((best, curr) => curr.tip > best.tip ? curr : best, orderResults[0])
+    : null;
+
+  const skillErrorCounts: Record<ReviewPointType, number> = {
+    deviation: 0,
+    speed_fast: 0,
+    speed_slow: 0,
+    pressure_high: 0,
+    pressure_low: 0,
+  };
+
+  const patternErrorCounts: Record<PatternType, number> = {
+    rose: 0,
+    leaf: 0,
+    shell: 0,
+    text: 0,
+  };
+
+  orderResults.forEach(result => {
+    if (result.review) {
+      skillErrorCounts.deviation += result.review.deviationCount;
+      skillErrorCounts.speed_fast += result.review.speedFastCount;
+      skillErrorCounts.speed_slow += result.review.speedSlowCount;
+      skillErrorCounts.pressure_high += result.review.pressureHighCount;
+      skillErrorCounts.pressure_low += result.review.pressureLowCount;
+      patternErrorCounts[result.review.weakestPatternType]++;
+    }
+  });
+
+  let weakestSkill: ReviewPointType = 'deviation';
+  let maxSkillErrors = 0;
+  for (const [skill, count] of Object.entries(skillErrorCounts)) {
+    if (count > maxSkillErrors) {
+      maxSkillErrors = count;
+      weakestSkill = skill as ReviewPointType;
+    }
+  }
+
+  let weakestPatternType: PatternType = 'rose';
+  let maxPatternErrors = 0;
+  for (const [pType, count] of Object.entries(patternErrorCounts)) {
+    if (count > maxPatternErrors) {
+      maxPatternErrors = count;
+      weakestPatternType = pType as PatternType;
+    }
+  }
+
+  return {
+    totalIncome,
+    averageSatisfaction,
+    failedOrders,
+    totalOrders: orderResults.length,
+    bestOrder,
+    weakestSkill,
+    weakestPatternType,
+    orderResults,
+    businessDayTime,
+    date: new Date().toISOString().split('T')[0],
   };
 };

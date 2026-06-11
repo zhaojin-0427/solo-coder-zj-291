@@ -3,6 +3,7 @@ import Home from '@/pages/Home';
 import Game from '@/pages/Game';
 import Learn from '@/pages/Learn';
 import Practice, { PracticeSelect } from '@/pages/Practice';
+import BusinessDay from '@/pages/BusinessDay';
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
         <Route path="/learn" element={<Learn />} />
         <Route path="/practice" element={<PracticeSelect />} />
         <Route path="/practice/:patternType" element={<Practice />} />
+        <Route path="/business-day" element={<BusinessDay />} />
       </Routes>
     </BrowserRouter>
   );

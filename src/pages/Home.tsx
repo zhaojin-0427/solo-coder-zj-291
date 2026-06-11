@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Cake, BookOpen, Trophy, Star, Target } from 'lucide-react';
+import { Cake, BookOpen, Trophy, Star, Target, Store } from 'lucide-react';
 import { levels } from '@/data/levels';
 import { useGameStore } from '@/store/gameStore';
 
@@ -106,6 +106,14 @@ const Home: React.FC = () => {
             <span className="text-lg">🎯 专项练习</span>
           </Link>
         </div>
+
+        <Link
+          to="/business-day"
+          className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-orange-400 via-red-400 to-pink-400 hover:from-orange-500 hover:via-red-500 hover:to-pink-500 text-white font-bold py-4 px-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02]"
+        >
+          <Store className="w-6 h-6" />
+          <span className="text-lg">🏪 营业日挑战</span>
+        </Link>
       </div>
 
       <div className="relative z-10 mt-6 text-center text-sm text-orange-600 bg-white/60 rounded-xl px-4 py-2">

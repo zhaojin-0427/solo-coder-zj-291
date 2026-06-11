@@ -90,3 +90,59 @@ export interface PracticeResult {
 export interface HighScores {
   [levelId: number]: number;
 }
+
+export interface CustomerOrder {
+  id: string;
+  customerName: string;
+  customerEmoji: string;
+  cakeShape: CakeShape;
+  cakeColor: string;
+  nozzleType: NozzleType;
+  requiredPatterns: Pattern[];
+  timeLimit: number;
+  basePrice: number;
+  patience: number;
+  patienceDecayRate: number;
+  toleranceBonus: number;
+  colorPreference: string;
+  preferredSpeed: 'slow' | 'medium' | 'fast';
+}
+
+export interface OrderResult {
+  orderId: string;
+  customerName: string;
+  customerEmoji: string;
+  score: GameScore;
+  completion: number;
+  accuracy: number;
+  speedQuality: number;
+  pressureStability: number;
+  preferenceMatch: number;
+  patienceRemaining: number;
+  tip: number;
+  satisfaction: number;
+  timeUsed: number;
+  timeLimit: number;
+  failed: boolean;
+  review: TrajectoryReview | null;
+}
+
+export interface BusinessDayResult {
+  totalIncome: number;
+  averageSatisfaction: number;
+  failedOrders: number;
+  totalOrders: number;
+  bestOrder: OrderResult | null;
+  weakestSkill: ReviewPointType;
+  weakestPatternType: PatternType;
+  orderResults: OrderResult[];
+  businessDayTime: number;
+  date: string;
+}
+
+export interface BusinessDayLeaderboardEntry {
+  totalIncome: number;
+  date: string;
+  totalOrders: number;
+  failedOrders: number;
+}

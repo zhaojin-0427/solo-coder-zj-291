@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { HighScores, GameScore } from '@/types/game';
+import { HighScores, GameScore, BusinessDayLeaderboardEntry } from '@/types/game';
 
 export type PracticeHighScores = Record<string, number>;
 
@@ -11,6 +11,7 @@ interface GameStore {
   isPaused: boolean;
   highScores: HighScores;
   practiceHighScores: PracticeHighScores;
+  businessDayLeaderboard: BusinessDayLeaderboardEntry[];
   setCurrentLevel: (levelId: number | null) => void;
   setScore: (score: GameScore | null) => void;
   setPlaying: (playing: boolean) => void;
@@ -19,6 +20,8 @@ interface GameStore {
   getHighScore: (levelId: number) => number;
   savePracticeHighScore: (patternType: string, score: number) => void;
   getPracticeHighScore: (patternType: string) => number;
+  saveBusinessDayScore: (entry: BusinessDayLeaderboardEntry) => void;
+  getBusinessDayLeaderboard: () => BusinessDayLeaderboardEntry[];
   resetGame: () => void;
 }
 
@@ -31,6 +34,7 @@ export const useGameStore = create<GameStore>()(
       isPaused: false,
       highScores: {},
       practiceHighScores: {},
+      businessDayLeaderboard: [],
       setCurrentLevel: (levelId) => set({ currentLevel: levelId }),
       setScore: (score) => set({ score }),
       setPlaying: (playing) => set({ isPlaying: playing }),
@@ -53,6 +57,13 @@ export const useGameStore = create<GameStore>()(
         }
       },
       getPracticeHighScore: (patternType) => get().practiceHighScores[patternType] || 0,
+      saveBusinessDayScore: (entry) => {
+        const leaderboard = [...get().businessDayLeaderboard, entry]
+          .sort((a, b) => b.totalIncome - a.totalIncome)
+          .slice(0, 10);
+        set({ businessDayLeaderboard: leaderboard });
+      },
+      getBusinessDayLeaderboard: () => get().businessDayLeaderboard,
       resetGame: () => set({ currentLevel: null, score: null, isPlaying: false, isPaused: false }),
     }),
     {
@@ -60,6 +71,7 @@ export const useGameStore = create<GameStore>()(
       partialize: (state) => ({
         highScores: state.highScores,
         practiceHighScores: state.practiceHighScores,
+        businessDayLeaderboard: state.businessDayLeaderboard,
       }),
     }
   )
