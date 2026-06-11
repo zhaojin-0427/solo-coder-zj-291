@@ -49,7 +49,7 @@ const CustomerOrderCard: React.FC<CustomerOrderCardProps> = ({
   const timeColor = timePercent > 50 ? 'text-green-600' : timePercent > 25 ? 'text-yellow-600' : 'text-red-600';
   const timeBgColor = timePercent > 50 ? 'bg-green-500' : timePercent > 25 ? 'bg-yellow-500' : 'bg-red-500';
 
-  const patiencePercent = (patience / order.patience) * 100;
+  const patiencePercent = Math.min(100, (patience / order.patience) * 100);
   const patienceColor = patiencePercent > 50 ? 'bg-green-500' : patiencePercent > 25 ? 'bg-yellow-500' : 'bg-red-500';
 
   const bdMinutes = Math.floor(businessDayTimeRemaining / 60);

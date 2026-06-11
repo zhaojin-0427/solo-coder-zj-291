@@ -72,8 +72,10 @@ const BusinessDay: React.FC = () => {
     } else {
       setPhase('transition');
       setTimeout(() => {
+        const nextOrder = customerQueueRef.current[nextIndex];
         setCurrentOrderIndex(nextIndex);
         currentOrderIndexRef.current = nextIndex;
+        setPatience(nextOrder ? nextOrder.patience : 100);
         setPhase('playing');
       }, 1800);
     }
@@ -140,7 +142,7 @@ const BusinessDay: React.FC = () => {
 
     const leaderboard = getBusinessDayLeaderboard();
     const bestScore = leaderboard.length > 0 ? leaderboard[0].totalIncome : 0;
-    if (result.totalIncome > bestScore) {
+    if (result.totalIncome > bestScore && result.totalIncome > 0) {
       setIsNewRecord(true);
     }
 

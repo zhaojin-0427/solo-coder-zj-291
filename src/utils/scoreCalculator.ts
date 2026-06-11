@@ -556,7 +556,9 @@ export const calculateOrderResult = (
     (preferenceMatch / 100) * 15
   );
 
-  const tip = Math.round(
+  const failed = satisfaction < 20 || score.completion < 15;
+
+  const tip = failed ? 0 : Math.round(
     order.basePrice *
     (1 + speedBonus * 0.3) *
     (0.5 + (accuracy / 100) * 0.3) *
@@ -564,8 +566,6 @@ export const calculateOrderResult = (
     (0.8 + (preferenceMatch / 100) * 0.2) *
     (0.4 + patienceFactor * 0.6)
   );
-
-  const failed = satisfaction < 20 || score.completion < 15;
 
   const review = drawnPaths.length > 0 && !drawnPaths.every(p => p.length < 2)
     ? analyzeTrajectory(order.requiredPatterns, drawnPaths)
