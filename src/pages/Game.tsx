@@ -59,16 +59,21 @@ const Game: React.FC = () => {
     const gameSceneInstance = new PipingGameScene();
     (gameSceneInstance as any).initData = sceneConfig;
 
+    const logicalWidth = 800;
+    const logicalHeight = 600;
+
     const config: Phaser.Types.Core.GameConfig = {
       type: Phaser.AUTO,
       parent: gameContainerRef.current,
-      width: 800,
-      height: 600,
+      width: logicalWidth,
+      height: logicalHeight,
       backgroundColor: '#FFF8E7',
       scene: [],
       scale: {
         mode: Phaser.Scale.FIT,
         autoCenter: Phaser.Scale.CENTER_BOTH,
+        width: logicalWidth,
+        height: logicalHeight,
       },
     };
 
@@ -80,7 +85,15 @@ const Game: React.FC = () => {
       sceneRef.current = gameSceneInstance;
     });
 
+    const handleResize = () => {
+      if (gameRef.current) {
+        gameRef.current.scale.refresh();
+      }
+    };
+    window.addEventListener('resize', handleResize);
+
     return () => {
+      window.removeEventListener('resize', handleResize);
       if (gameRef.current) {
         gameRef.current.destroy(true);
         gameRef.current = null;
@@ -137,13 +150,13 @@ const Game: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-orange-50 to-yellow-50 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-orange-50 to-yellow-50 p-2 md:p-4">
       <div className="max-w-6xl mx-auto">
-        <div className="flex flex-col lg:flex-row gap-4 items-start">
-          <div className="flex-1">
+        <div className="flex flex-col lg:flex-row gap-3 md:gap-4 items-start">
+          <div className="flex-1 w-full">
             <div
               ref={gameContainerRef}
-              className="bg-white rounded-3xl shadow-2xl overflow-hidden border-4 border-pink-200"
+              className="relative bg-white rounded-2xl md:rounded-3xl shadow-2xl overflow-hidden border-4 border-pink-200 w-full"
               style={{ aspectRatio: '4/3', maxWidth: '800px' }}
             />
             <div className="mt-3 text-center text-sm text-orange-700 bg-white/70 rounded-xl py-2 px-4">
