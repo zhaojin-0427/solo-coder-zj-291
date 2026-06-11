@@ -3,6 +3,11 @@
 export default {
   darkMode: 'class',
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+  safelist: [
+    {
+      pattern: /(bg|text|border)-(blue|purple|orange|pink|green|yellow|red|gray)-(100|200|300|400|500|600|700)/,
+    },
+  ],
   theme: {
     container: {
       center: true,

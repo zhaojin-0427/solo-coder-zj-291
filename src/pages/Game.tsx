@@ -6,8 +6,10 @@ import { PipingGameScene } from '@/game/PipingGameScene';
 import { GameScore, DrawnPoint, TrajectoryReview } from '@/types/game';
 import { useGameStore } from '@/store/gameStore';
 import { analyzeTrajectory } from '@/utils/scoreCalculator';
+import { ExpSettlement } from '@/types/skill';
 import GameHUD from '@/components/GameHUD';
 import ResultModal from '@/components/ResultModal';
+import ExpSettlementToast from '@/components/ExpSettlementToast';
 
 const Game: React.FC = () => {
   const { levelId } = useParams<{ levelId: string }>();
@@ -16,7 +18,7 @@ const Game: React.FC = () => {
   const gameRef = useRef<Phaser.Game | null>(null);
   const sceneRef = useRef<PipingGameScene | null>(null);
 
-  const { saveHighScore, getHighScore } = useGameStore();
+  const { saveHighScore, getHighScore, submitLevelResult } = useGameStore();
 
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [pressure, setPressure] = useState(0.5);
@@ -30,6 +32,7 @@ const Game: React.FC = () => {
   const [isNewRecord, setIsNewRecord] = useState(false);
   const [trajectoryReview, setTrajectoryReview] = useState<TrajectoryReview | null>(null);
   const [drawnPaths, setDrawnPaths] = useState<DrawnPoint[][]>([]);
+  const [expSettlement, setExpSettlement] = useState<ExpSettlement | null>(null);
 
   const level = levels.find((l) => l.id === Number(levelId));
 
@@ -41,8 +44,20 @@ const Game: React.FC = () => {
         saveHighScore(Number(levelId), score.totalScore);
         setIsNewRecord(true);
       }
+      const speedQuality = Math.round(score.satisfaction * 0.9 + score.completion * 0.1);
+      const pressureQuality = Math.round(score.satisfaction * 0.85 + score.completion * 0.15);
+      const result = submitLevelResult({
+        score: score.totalScore,
+        completion: score.completion,
+        satisfaction: score.satisfaction,
+        speedQuality: Math.min(100, speedQuality),
+        pressureQuality: Math.min(100, pressureQuality),
+        levelId: Number(levelId),
+        stars: score.stars,
+      });
+      setExpSettlement(result);
     },
-    [levelId, getHighScore, saveHighScore]
+    [levelId, level, getHighScore, saveHighScore, submitLevelResult]
   );
 
   useEffect(() => {
@@ -194,6 +209,13 @@ const Game: React.FC = () => {
           onReplay={handleReplay}
           onHome={handleHome}
           onPracticeWeakness={handlePracticeWeakness}
+        />
+      )}
+
+      {expSettlement && (
+        <ExpSettlementToast
+          settlement={expSettlement}
+          onClose={() => setExpSettlement(null)}
         />
       )}
     </div>

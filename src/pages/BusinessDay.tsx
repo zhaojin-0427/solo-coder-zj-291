@@ -6,8 +6,10 @@ import { GameScore, DrawnPoint, CustomerOrder, OrderResult, BusinessDayResult } 
 import { useGameStore } from '@/store/gameStore';
 import { generateCustomerQueue, BUSINESS_DAY_DURATION, BUSINESS_DAY_CUSTOMER_COUNT } from '@/data/customers';
 import { calculateOrderResult, calculateBusinessDayResult } from '@/utils/scoreCalculator';
+import { ExpSettlement } from '@/types/skill';
 import CustomerOrderCard from '@/components/CustomerOrderCard';
 import BusinessDaySummary from '@/components/BusinessDaySummary';
+import ExpSettlementToast from '@/components/ExpSettlementToast';
 
 type Phase = 'intro' | 'playing' | 'transition' | 'summary';
 
@@ -17,7 +19,7 @@ const BusinessDay: React.FC = () => {
   const gameRef = useRef<Phaser.Game | null>(null);
   const sceneRef = useRef<ChallengeScene | null>(null);
 
-  const { saveBusinessDayScore, getBusinessDayLeaderboard } = useGameStore();
+  const { saveBusinessDayScore, getBusinessDayLeaderboard, submitBusinessDayResult } = useGameStore();
 
   const [phase, setPhase] = useState<Phase>('intro');
   const [customerQueue, setCustomerQueue] = useState<CustomerOrder[]>([]);
@@ -35,6 +37,7 @@ const BusinessDay: React.FC = () => {
   const [businessDayTimeRemaining, setBusinessDayTimeRemaining] = useState(BUSINESS_DAY_DURATION);
   const [businessDayResult, setBusinessDayResult] = useState<BusinessDayResult | null>(null);
   const [isNewRecord, setIsNewRecord] = useState(false);
+  const [expSettlement, setExpSettlement] = useState<ExpSettlement | null>(null);
 
   const businessDayTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const currentOrderRef = useRef<CustomerOrder | null>(null);
@@ -152,7 +155,28 @@ const BusinessDay: React.FC = () => {
       totalOrders: result.totalOrders,
       failedOrders: result.failedOrders,
     });
-  }, [phase, getBusinessDayLeaderboard, saveBusinessDayScore]);
+
+    const completedOrders = result.totalOrders - result.failedOrders;
+    const avgCompletion = result.orderResults.length > 0
+      ? Math.round(result.orderResults.reduce((s, o) => s + o.completion, 0) / result.orderResults.length)
+      : 0;
+    const avgSpeed = result.orderResults.length > 0
+      ? Math.round(result.orderResults.reduce((s, o) => s + o.speedQuality, 0) / result.orderResults.length)
+      : 0;
+    const avgPressure = result.orderResults.length > 0
+      ? Math.round(result.orderResults.reduce((s, o) => s + o.pressureStability, 0) / result.orderResults.length)
+      : 0;
+    const settlement = submitBusinessDayResult({
+      totalOrders: result.totalOrders,
+      totalIncome: result.totalIncome,
+      averageSatisfaction: result.averageSatisfaction,
+      averageCompletion: avgCompletion,
+      averageSpeedQuality: avgSpeed,
+      averagePressureQuality: avgPressure,
+      completedOrders,
+    });
+    setExpSettlement(settlement);
+  }, [phase, getBusinessDayLeaderboard, saveBusinessDayScore, submitBusinessDayResult]);
 
   useEffect(() => {
     if (!gameContainerRef.current || phase === 'intro') return;
@@ -365,6 +389,13 @@ const BusinessDay: React.FC = () => {
           onReplay={handleReplay}
           onHome={handleHome}
           onPracticeWeakness={handlePracticeWeakness}
+        />
+      )}
+
+      {expSettlement && (
+        <ExpSettlementToast
+          settlement={expSettlement}
+          onClose={() => setExpSettlement(null)}
         />
       )}
     </div>

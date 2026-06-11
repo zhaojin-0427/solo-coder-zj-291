@@ -5,7 +5,9 @@ import { practicePatterns } from '@/data/levels';
 import { PracticeScene } from '@/game/PracticeScene';
 import { PracticeResult, PatternType } from '@/types/game';
 import { useGameStore } from '@/store/gameStore';
+import { ExpSettlement } from '@/types/skill';
 import { Trophy, Star, Target, ArrowLeft } from 'lucide-react';
+import ExpSettlementToast from '@/components/ExpSettlementToast';
 
 const nozzleLabels: Record<string, string> = {
   round: '圆口花嘴',
@@ -51,7 +53,7 @@ const Practice: React.FC = () => {
   const gameRef = useRef<Phaser.Game | null>(null);
   const sceneRef = useRef<PracticeScene | null>(null);
 
-  const { savePracticeHighScore, getPracticeHighScore } = useGameStore();
+  const { savePracticeHighScore, getPracticeHighScore, submitPracticeResult } = useGameStore();
 
   const resolvedType = resolvePatternType(rawPatternType);
   const pattern = practicePatterns.find((p) => p.type === resolvedType);
@@ -61,6 +63,7 @@ const Practice: React.FC = () => {
   const [currentHint, setCurrentHint] = useState<string>('');
   const [isFinished, setIsFinished] = useState(false);
   const [isNewRecord, setIsNewRecord] = useState(false);
+  const [expSettlement, setExpSettlement] = useState<ExpSettlement | null>(null);
 
   const handlePracticeEnd = useCallback(
     (result: PracticeResult) => {
@@ -72,9 +75,18 @@ const Practice: React.FC = () => {
           savePracticeHighScore(pattern.type, result.score);
           setIsNewRecord(true);
         }
+        const settlement = submitPracticeResult({
+          score: result.score,
+          completion: result.completion,
+          satisfaction: result.completion,
+          speedQuality: result.speedQuality,
+          pressureQuality: result.pressureQuality,
+          patternType: pattern.type,
+        });
+        setExpSettlement(settlement);
       }
     },
-    [pattern, getPracticeHighScore, savePracticeHighScore]
+    [pattern, getPracticeHighScore, savePracticeHighScore, submitPracticeResult]
   );
 
   const handleScoreUpdate = useCallback((result: PracticeResult) => {
@@ -364,6 +376,13 @@ const Practice: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {expSettlement && (
+        <ExpSettlementToast
+          settlement={expSettlement}
+          onClose={() => setExpSettlement(null)}
+        />
+      )}
     </div>
   );
 };

@@ -4,7 +4,9 @@ import Phaser from 'phaser';
 import { FreeCreateScene } from '@/game/FreeCreateScene';
 import { DrawnPoint, CakeShape, NozzleType, BackgroundDecoration, CakeArtwork } from '@/types/game';
 import { useGameStore } from '@/store/gameStore';
+import { ExpSettlement } from '@/types/skill';
 import { ArrowLeft, Undo2, Trash2, Save, Palette, Circle, Square, Heart, Star, Leaf, Edit3, Sparkles } from 'lucide-react';
+import ExpSettlementToast from '@/components/ExpSettlementToast';
 
 const CAKE_SHAPES: { value: CakeShape; label: string; icon: React.ReactNode }[] = [
   { value: 'circle', label: '圆形', icon: <Circle className="w-5 h-5" /> },
@@ -56,7 +58,7 @@ const FreeCreate: React.FC = () => {
   const gameRef = useRef<Phaser.Game | null>(null);
   const sceneRef = useRef<FreeCreateScene | null>(null);
 
-  const { saveArtwork, getArtworkById, updateArtwork } = useGameStore();
+  const { saveArtwork, getArtworkById, updateArtwork, submitFreeCreateResult } = useGameStore();
 
   const [cakeShape, setCakeShape] = useState<CakeShape>('circle');
   const [cakeColor, setCakeColor] = useState('#FFE4C4');
@@ -72,6 +74,7 @@ const FreeCreate: React.FC = () => {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [existingArtwork, setExistingArtwork] = useState<CakeArtwork | null>(null);
+  const [expSettlement, setExpSettlement] = useState<ExpSettlement | null>(null);
 
   const drawnPathsRef = useRef<DrawnPoint[][]>([]);
 
@@ -280,6 +283,8 @@ const FreeCreate: React.FC = () => {
         tags: selectedTags,
       };
       saveArtwork(newArtwork);
+      const settlement = submitFreeCreateResult();
+      setExpSettlement(settlement);
     }
 
     setShowSaveModal(false);
@@ -577,6 +582,13 @@ const FreeCreate: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {expSettlement && (
+        <ExpSettlementToast
+          settlement={expSettlement}
+          onClose={() => setExpSettlement(null)}
+        />
       )}
     </div>
   );

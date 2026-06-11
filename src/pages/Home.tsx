@@ -1,8 +1,9 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Cake, BookOpen, Trophy, Star, Target, Store, Palette, Image } from 'lucide-react';
+import { Cake, BookOpen, Trophy, Star, Target, Store, Palette, Image, Award } from 'lucide-react';
 import { levels } from '@/data/levels';
 import { useGameStore } from '@/store/gameStore';
+import { getLevelTitle } from '@/types/skill';
 
 const difficultyColors = {
   easy: 'bg-green-100 text-green-700 border-green-300',
@@ -17,7 +18,8 @@ const difficultyLabels = {
 };
 
 const Home: React.FC = () => {
-  const { getHighScore } = useGameStore();
+  const { getHighScore, getSkillProfile } = useGameStore();
+  const skillProfile = getSkillProfile();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-orange-50 to-yellow-50 flex flex-col items-center justify-center p-4 relative overflow-hidden">
@@ -131,6 +133,15 @@ const Home: React.FC = () => {
             <span className="text-lg">🖼️ 作品展厅</span>
           </Link>
         </div>
+
+        <Link
+          to="/skill-profile"
+          className="w-full mt-3 flex items-center justify-center gap-2 bg-gradient-to-r from-purple-400 via-pink-400 to-yellow-400 hover:from-purple-500 hover:via-pink-500 hover:to-yellow-500 text-white font-bold py-4 px-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02]"
+        >
+          <Award className="w-6 h-6" />
+          <span className="text-lg">🏅 技能档案</span>
+          <span className="text-sm opacity-80">Lv.{skillProfile.level} {getLevelTitle(skillProfile.level)}</span>
+        </Link>
       </div>
 
       <div className="relative z-10 mt-6 text-center text-sm text-orange-600 bg-white/60 rounded-xl px-4 py-2">
