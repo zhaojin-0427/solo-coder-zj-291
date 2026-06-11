@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { HighScores, GameScore, BusinessDayLeaderboardEntry } from '@/types/game';
+import { HighScores, GameScore, BusinessDayLeaderboardEntry, CakeArtwork, SortBy } from '@/types/game';
 
 export type PracticeHighScores = Record<string, number>;
 
@@ -12,6 +12,7 @@ interface GameStore {
   highScores: HighScores;
   practiceHighScores: PracticeHighScores;
   businessDayLeaderboard: BusinessDayLeaderboardEntry[];
+  artworks: CakeArtwork[];
   setCurrentLevel: (levelId: number | null) => void;
   setScore: (score: GameScore | null) => void;
   setPlaying: (playing: boolean) => void;
@@ -22,6 +23,11 @@ interface GameStore {
   getPracticeHighScore: (patternType: string) => number;
   saveBusinessDayScore: (entry: BusinessDayLeaderboardEntry) => void;
   getBusinessDayLeaderboard: () => BusinessDayLeaderboardEntry[];
+  saveArtwork: (artwork: CakeArtwork) => void;
+  getArtworks: (sortBy?: SortBy) => CakeArtwork[];
+  getArtworkById: (id: string) => CakeArtwork | undefined;
+  deleteArtwork: (id: string) => void;
+  updateArtwork: (id: string, updates: Partial<CakeArtwork>) => void;
   resetGame: () => void;
 }
 
@@ -35,6 +41,7 @@ export const useGameStore = create<GameStore>()(
       highScores: {},
       practiceHighScores: {},
       businessDayLeaderboard: [],
+      artworks: [],
       setCurrentLevel: (levelId) => set({ currentLevel: levelId }),
       setScore: (score) => set({ score }),
       setPlaying: (playing) => set({ isPlaying: playing }),
@@ -64,6 +71,39 @@ export const useGameStore = create<GameStore>()(
         set({ businessDayLeaderboard: leaderboard });
       },
       getBusinessDayLeaderboard: () => get().businessDayLeaderboard,
+      saveArtwork: (artwork) => {
+        set((state) => ({
+          artworks: [artwork, ...state.artworks],
+        }));
+      },
+      getArtworks: (sortBy = 'newest') => {
+        const artworks = [...get().artworks];
+        switch (sortBy) {
+          case 'newest':
+            return artworks.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          case 'oldest':
+            return artworks.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+          case 'highest_rated':
+            return artworks.sort((a, b) => b.rating - a.rating);
+          case 'lowest_rated':
+            return artworks.sort((a, b) => a.rating - b.rating);
+          default:
+            return artworks;
+        }
+      },
+      getArtworkById: (id) => get().artworks.find((a) => a.id === id),
+      deleteArtwork: (id) => {
+        set((state) => ({
+          artworks: state.artworks.filter((a) => a.id !== id),
+        }));
+      },
+      updateArtwork: (id, updates) => {
+        set((state) => ({
+          artworks: state.artworks.map((a) =>
+            a.id === id ? { ...a, ...updates } : a
+          ),
+        }));
+      },
       resetGame: () => set({ currentLevel: null, score: null, isPlaying: false, isPaused: false }),
     }),
     {
@@ -72,6 +112,7 @@ export const useGameStore = create<GameStore>()(
         highScores: state.highScores,
         practiceHighScores: state.practiceHighScores,
         businessDayLeaderboard: state.businessDayLeaderboard,
+        artworks: state.artworks,
       }),
     }
   )

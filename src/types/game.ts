@@ -32,6 +32,8 @@ export interface Level {
 export interface DrawnPoint extends Point {
   thickness: number;
   timestamp: number;
+  color?: string;
+  nozzleType?: NozzleType;
 }
 
 export interface GameScore {
@@ -146,3 +148,23 @@ export interface BusinessDayLeaderboardEntry {
   totalOrders: number;
   failedOrders: number;
 }
+
+export type BackgroundDecoration = 'none' | 'sprinkles' | 'flowers' | 'stars' | 'hearts';
+
+export interface CakeArtwork {
+  id: string;
+  name: string;
+  thumbnail: string;
+  createdAt: string;
+  cakeShape: CakeShape;
+  cakeColor: string;
+  nozzleTypes: NozzleType[];
+  mainColors: string[];
+  drawnPaths: DrawnPoint[][];
+  backgroundColor: string;
+  backgroundDecoration: BackgroundDecoration;
+  rating: number;
+  tags: string[];
+}
+
+export type SortBy = 'newest' | 'oldest' | 'highest_rated' | 'lowest_rated';

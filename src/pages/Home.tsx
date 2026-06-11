@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Cake, BookOpen, Trophy, Star, Target, Store } from 'lucide-react';
+import { Cake, BookOpen, Trophy, Star, Target, Store, Palette, Image } from 'lucide-react';
 import { levels } from '@/data/levels';
 import { useGameStore } from '@/store/gameStore';
 
@@ -114,6 +114,23 @@ const Home: React.FC = () => {
           <Store className="w-6 h-6" />
           <span className="text-lg">🏪 营业日挑战</span>
         </Link>
+
+        <div className="flex gap-3 mt-3">
+          <Link
+            to="/free-create"
+            className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-pink-400 to-purple-400 hover:from-pink-500 hover:to-purple-500 text-white font-bold py-4 px-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02]"
+          >
+            <Palette className="w-6 h-6" />
+            <span className="text-lg">🎨 自由创作</span>
+          </Link>
+          <Link
+            to="/gallery"
+            className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-400 to-blue-400 hover:from-cyan-500 hover:to-blue-500 text-white font-bold py-4 px-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02]"
+          >
+            <Image className="w-6 h-6" />
+            <span className="text-lg">🖼️ 作品展厅</span>
+          </Link>
+        </div>
       </div>
 
       <div className="relative z-10 mt-6 text-center text-sm text-orange-600 bg-white/60 rounded-xl px-4 py-2">
